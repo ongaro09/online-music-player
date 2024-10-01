@@ -5,33 +5,36 @@ const Song = require('../models/Song');
 const auth = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
-// ... (previous routes remain the same)
+// Apply auth middleware to all routes
 router.use(auth);
 
 // Create a new playlist
 router.post('/', async (req, res) => {
   try {
     const { name } = req.body;
-    const playlist = new Playlist({ name, user: req.userId });
+    const playlist = new Playlist({ name, user: req.user.userId });
     await playlist.save();
     res.status(201).json(playlist);
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: 'Error creating playlist', error: error.message });
   }
 });
 
 // Get all playlists for the authenticated user
 router.get('/', async (req, res) => {
+  console.log('GET /api/playlists - User ID:', req.user.userId); // Log the user ID
   try {
-    const playlists = await Playlist.find({ user: req.userId });
+    const playlists = await Playlist.find({ user: req.user.userId });
     res.json(playlists);
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: 'Error fetching playlists', error: error.message });
   }
 });
+
 // Add a song to a playlist
 router.post('/:playlistId/songs', [
-  auth,
   body('songId').isMongoId().withMessage('Invalid song ID')
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -43,7 +46,7 @@ router.post('/:playlistId/songs', [
     const { playlistId } = req.params;
     const { songId } = req.body;
 
-    const playlist = await Playlist.findOne({ _id: playlistId, user: req.userId });
+    const playlist = await Playlist.findOne({ _id: playlistId, user: req.user.userId });
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
@@ -62,16 +65,17 @@ router.post('/:playlistId/songs', [
 
     res.json(playlist);
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: 'Error adding song to playlist', error: error.message });
   }
 });
 
 // Remove a song from a playlist
-router.delete('/:playlistId/songs/:songId', auth, async (req, res) => {
+router.delete('/:playlistId/songs/:songId', async (req, res) => {
   try {
     const { playlistId, songId } = req.params;
 
-    const playlist = await Playlist.findOne({ _id: playlistId, user: req.userId });
+    const playlist = await Playlist.findOne({ _id: playlistId, user: req.user.userId });
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
@@ -86,6 +90,7 @@ router.delete('/:playlistId/songs/:songId', auth, async (req, res) => {
 
     res.json(playlist);
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: 'Error removing song from playlist', error: error.message });
   }
 });
