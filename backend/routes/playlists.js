@@ -1,98 +1,55 @@
 const express = require('express');
-const router = express.Router();
 const Playlist = require('../models/Playlist');
-const Song = require('../models/Song');
-const auth = require('../middleware/auth');
-const { body, validationResult } = require('express-validator');
-
-// Apply auth middleware to all routes
-router.use(auth);
+const router = express.Router();
 
 // Create a new playlist
 router.post('/', async (req, res) => {
-  try {
-    const { name } = req.body;
-    const playlist = new Playlist({ name, user: req.user.userId });
-    await playlist.save();
-    res.status(201).json(playlist);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Error creating playlist', error: error.message });
-  }
+    const { userId, name, songs } = req.body;
+
+    const playlist = new Playlist({
+        userId,
+        name,
+        songs,
+    });
+
+    try {
+        const savedPlaylist = await playlist.save();
+        res.status(201).json(savedPlaylist);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
 });
 
-// Get all playlists for the authenticated user
-router.get('/', async (req, res) => {
-  console.log('GET /api/playlists - User ID:', req.user.userId); // Log the user ID
-  try {
-    const playlists = await Playlist.find({ user: req.user.userId });
-    res.json(playlists);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Error fetching playlists', error: error.message });
-  }
+// Get playlists by userId
+router.get('/:userId', async (req, res) => {
+    try {
+        const playlists = await Playlist.find({ userId: req.params.userId });
+        res.json(playlists);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
 });
 
-// Add a song to a playlist
-router.post('/:playlistId/songs', [
-  body('songId').isMongoId().withMessage('Invalid song ID')
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    const { playlistId } = req.params;
-    const { songId } = req.body;
-
-    const playlist = await Playlist.findOne({ _id: playlistId, user: req.user.userId });
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+// Add songs to a playlist
+router.put('/:id', async (req, res) => {
+    try {
+        const updatedPlaylist = await Playlist.findByIdAndUpdate(req.params.id, {
+            $addToSet: { songs: req.body.songId },
+        }, { new: true });
+        res.json(updatedPlaylist);
+    } catch (error) {
+        res.status(500).send(error.message);
     }
-
-    const song = await Song.findById(songId);
-    if (!song) {
-      return res.status(404).json({ message: 'Song not found' });
-    }
-
-    if (playlist.songs.includes(songId)) {
-      return res.status(400).json({ message: 'Song already in playlist' });
-    }
-
-    playlist.songs.push(songId);
-    await playlist.save();
-
-    res.json(playlist);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Error adding song to playlist', error: error.message });
-  }
 });
 
-// Remove a song from a playlist
-router.delete('/:playlistId/songs/:songId', async (req, res) => {
-  try {
-    const { playlistId, songId } = req.params;
-
-    const playlist = await Playlist.findOne({ _id: playlistId, user: req.user.userId });
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+// Delete a playlist
+router.delete('/:id', async (req, res) => {
+    try {
+        await Playlist.findByIdAndDelete(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).send(error.message);
     }
-
-    const songIndex = playlist.songs.indexOf(songId);
-    if (songIndex === -1) {
-      return res.status(400).json({ message: 'Song not in playlist' });
-    }
-
-    playlist.songs.splice(songIndex, 1);
-    await playlist.save();
-
-    res.json(playlist);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Error removing song from playlist', error: error.message });
-  }
 });
 
 module.exports = router;
