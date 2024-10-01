@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const passport = require('passport');
 const SpotifyStrategy = require('passport-spotify').Strategy;
+const spotifyRoutes = require('./routes/spotify');
 require('dotenv').config();
 
 const app = express();
@@ -10,6 +11,7 @@ app.use(express.json());
 app.use(session({ secret: 'your_session_secret', resave: true, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use('/api/spotify', spotifyRoutes);
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
