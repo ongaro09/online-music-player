@@ -1,8 +1,8 @@
 const express = require('express');
 const passport = require('passport');
-const jwt = require('jsonwebtoken'); // Ensure jwt is imported
-const fetch = require('node-fetch'); // Import node-fetch for API requests
-const jwtAuth = require('../middleware/jwtAuth'); // Import JWT middleware
+const jwt = require('jsonwebtoken');
+const fetch = require('node-fetch');
+const jwtAuth = require('../middleware/jwtAuth');
 const router = express.Router();
 
 // Start Spotify authentication
@@ -12,12 +12,10 @@ router.get('/login', passport.authenticate('spotify', {
 
 // Callback after Spotify has authenticated the user
 router.get('/callback', passport.authenticate('spotify', { failureRedirect: '/' }), (req, res) => {
-    // Successful authentication, create a JWT token and redirect to the frontend
     const token = jwt.sign({ id: req.user.id, accessToken: req.user.accessToken }, process.env.JWT_SECRET, {
         expiresIn: '1h',
     });
-    
-    res.redirect(`http://localhost:3000?token=${token}`); // frontend is served on port 3000
+    res.redirect(`http://localhost:3000?token=${token}`);
 });
 
 // Logout route
@@ -28,9 +26,8 @@ router.get('/logout', jwtAuth, (req, res) => {
 
 // Search for songs or albums
 router.get('/search', jwtAuth, async (req, res) => {
-    const { query, type } = req.query; // Get the query and type parameters
+    const { query, type } = req.query;
 
-    // Ensure type is either 'track' or 'album'
     if (!['track', 'album'].includes(type)) {
         return res.status(400).json({ message: 'Invalid search type. Use "track" or "album".' });
     }
@@ -38,15 +35,16 @@ router.get('/search', jwtAuth, async (req, res) => {
     try {
         const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}`, {
             headers: {
-                'Authorization': `Bearer ${req.user.accessToken}`, // Use the user's access token
+                'Authorization': `Bearer ${req.user.accessToken}`,
             }
         });
 
         const data = await response.json();
+        console.log(data); // Log the response for debugging
 
         if (type === 'track' && data.tracks && data.tracks.items) {
             const songs = data.tracks.items.map(track => ({
-                id: track.id, // Spotify song ID
+                id: track.id,
                 name: track.name,
                 artist: track.artists.map(artist => artist.name).join(', '),
                 album: track.album.name,
@@ -56,7 +54,7 @@ router.get('/search', jwtAuth, async (req, res) => {
 
         if (type === 'album' && data.albums && data.albums.items) {
             const albums = data.albums.items.map(album => ({
-                id: album.id, // Spotify album ID
+                id: album.id,
                 name: album.name,
                 artist: album.artists.map(artist => artist.name).join(', '),
                 releaseDate: album.release_date,
@@ -67,7 +65,37 @@ router.get('/search', jwtAuth, async (req, res) => {
 
         res.status(404).json({ message: 'No results found' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Error searching for items', error });
+    }
+});
+
+// Get album details by IDs
+router.get('/albums', jwtAuth, async (req, res) => {
+    const { ids } = req.query; // Get the comma-separated album IDs
+
+    if (!ids) {
+        return res.status(400).json({ message: 'Album IDs are required.' });
+    }
+
+    try {
+        const response = await fetch(`https://api.spotify.com/v1/albums?ids=${encodeURIComponent(ids)}`, {
+            headers: {
+                'Authorization': `Bearer ${req.user.accessToken}`,
+            }
+        });
+
+        const data = await response.json();
+        console.log(data); // Log the response for debugging
+
+        if (data.albums) {
+            return res.json(data.albums);
+        }
+
+        res.status(404).json({ message: 'No albums found' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching album details', error });
     }
 });
 
