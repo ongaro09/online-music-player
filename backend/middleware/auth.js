@@ -12,7 +12,7 @@ function jwtAuth(req, res, next) {
             return res.status(403).json({ message: 'Failed to authenticate token' });
         }
 
-        req.user = { id: decoded.id };
+        req.user = decoded;
         next();
     });
 }
