@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt'); // Import bcrypt for password hashing
 const User = require('../models/User'); // Assuming you have a User model
 const router = express.Router();
 
@@ -7,28 +8,40 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
     const { username, password } = req.body;
 
-    const user = new User({ username, password }); // Make sure to hash the password in your model
-    await user.save();
+    // Hash the password before saving the user
+    const hashedPassword = await bcrypt.hash(password, 10); // Hashing with a salt rounds of 10
+    const user = new User({ username, password: hashedPassword });
 
-    res.status(201).json({ message: 'User registered successfully' });
+    try {
+        await user.save();
+        res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error registering user', error });
+    }
 });
 
 // User login
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
-    // Authenticate user logic here (validate username and password)
-    const user = await User.findOne({ username }); // Example
+    try {
+        // Find the user by username
+        const user = await User.findOne({ username });
 
-    if (!user || !user.comparePassword(password)) { // Assuming you have a method to compare passwords
-        return res.status(401).json({ message: 'Invalid credentials' });
+        // Check if user exists and if the password is valid
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        // Create a JWT token
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
+
+        res.json({ token });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error });
     }
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '1h',
-    });
-
-    res.json({ token });
 });
 
 module.exports = router;
