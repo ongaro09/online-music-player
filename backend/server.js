@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const passport = require('passport');
 const SpotifyStrategy = require('passport-spotify').Strategy;
-const spotifyRoutes = require('./routes/spotify');
+const spotifyRoutes = require('./routes/spotify').router; // Use .router to access the router
 const userRoutes = require('./routes/users'); // Add users route
 const playlistRoutes = require('./routes/playlists'); // Add playlists route
 const songRoutes = require('./routes/songs'); // Add songs route
@@ -19,10 +19,10 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Set up your routes
-app.use('/api/spotify', spotifyRoutes);
-app.use('/api/users', userRoutes); // Add user routes
-app.use('/api/playlists', jwtAuth, playlistRoutes); // Add playlists routes with JWT protection
-app.use('/api/songs', jwtAuth, songRoutes); // Add songs routes with JWT protection
+app.use('/api/spotify', spotifyRoutes); // Spotify routes
+app.use('/api/users', userRoutes); // User routes
+app.use('/api/playlists', jwtAuth, playlistRoutes); // Playlists routes with JWT protection
+app.use('/api/songs', jwtAuth, songRoutes); // Songs routes with JWT protection
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
