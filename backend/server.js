@@ -1,53 +1,31 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const session = require('express-session');
-const passport = require('passport');
-const SpotifyStrategy = require('passport-spotify').Strategy;
-const spotifyRoutes = require('./routes/spotify').router; // Use .router to access the router
-const userRoutes = require('./routes/users'); // Add users route
-const playlistRoutes = require('./routes/playlists'); // Add playlists route
-const songRoutes = require('./routes/songs'); // Add songs route
-const jwtAuth = require('./middleware/jwtAuth'); // Import JWT middleware
-require('dotenv').config();
+const dotenv = require('dotenv');
+const authRoutes = require('./routes/auth');
+const trackRoutes = require('./routes/tracks');
+const playlistRoutes = require('./routes/playlists');
+const jwtAuth = require('./middleware/auth');
 
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5000; // Set up the port
+const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(express.json());
-app.use(session({ secret: 'your_session_secret', resave: true, saveUninitialized: true }));
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Set up your routes
-app.use('/api/spotify', spotifyRoutes); // Spotify routes
-app.use('/api/users', userRoutes); // User routes
-app.use('/api/playlists', jwtAuth, playlistRoutes); // Playlists routes with JWT protection
-app.use('/api/songs', jwtAuth, songRoutes); // Songs routes with JWT protection
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('MongoDB connected'))
-    .catch(err => console.error('MongoDB connection error:', err));
+mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.log('MongoDB connection error:', err));
 
-// Spotify authentication strategy
-passport.use(new SpotifyStrategy({
-    clientID: process.env.SPOTIFY_CLIENT_ID,
-    clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-    callbackURL: process.env.SPOTIFY_REDIRECT_URI,
-}, async (accessToken, refreshToken, expires_in, profile, done) => {
-    // You can store the user in your database here
-    done(null, profile);
-}));
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/tracks', jwtAuth, trackRoutes); // Protected route
+app.use('/api/playlists', jwtAuth, playlistRoutes); // Protected route
 
-passport.serializeUser((user, done) => {
-    done(null, user);
-});
-
-passport.deserializeUser((user, done) => {
-    done(null, user);
-});
-
-// Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
