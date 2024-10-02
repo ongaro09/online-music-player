@@ -73,5 +73,5 @@ router.post('/store-albums', jwtAuth, async (req, res) => {
     }
 });
 
-// Export functions and router
+// Export functions and the router separately
 module.exports = { searchTracks, createPlaylist, router };
