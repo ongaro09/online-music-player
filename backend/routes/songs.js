@@ -1,13 +1,15 @@
 const express = require('express');
 const { searchTracks, createPlaylist } = require('../services/spotify');
+const jwtAuth = require('../middleware/jwtAuth'); // Import JWT middleware
 const router = express.Router();
 
-// Search for songs route
-router.get('/search', async (req, res) => {
+// Search for songs
+router.get('/search', jwtAuth, async (req, res) => {
     const { query } = req.query;
-    const accessToken = req.user?.accessToken; // Assuming you stored the access token in the user session
-    if (!query || !accessToken) {
-        return res.status(400).send('Query parameter is required or not authenticated');
+    const accessToken = req.user.accessToken; // Assuming accessToken is stored in the JWT
+
+    if (!query) {
+        return res.status(400).send('Query parameter is required');
     }
 
     try {
@@ -18,11 +20,11 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Create a new playlist route
-router.post('/playlists', async (req, res) => {
+// Create a new playlist on Spotify
+router.post('/playlists', jwtAuth, async (req, res) => {
     const { name } = req.body;
-    const accessToken = req.user?.accessToken; // Get the user's access token
-    const userId = req.user?.id; // Assuming you stored the user ID in the user session
+    const accessToken = req.user.accessToken; // Get the user's access token
+    const userId = req.user.id; // Get the user ID
 
     if (!name || !accessToken || !userId) {
         return res.status(400).send('Missing required fields or not authenticated');

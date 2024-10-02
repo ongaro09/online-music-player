@@ -1,52 +1,33 @@
 const express = require('express');
-const Playlist = require('../models/Playlist');
+const jwtAuth = require('../middleware/jwtAuth'); // Import JWT middleware
+const Playlist = require('../models/Playlist'); // Assuming you have a Playlist model
 const router = express.Router();
 
 // Create a new playlist
-router.post('/', async (req, res) => {
-    const { userId, name, songs } = req.body;
+router.post('/', jwtAuth, async (req, res) => {
+    const { name } = req.body;
+    const userId = req.user.id; // Get the user ID from the JWT
 
-    const playlist = new Playlist({
-        userId,
-        name,
-        songs,
-    });
+    if (!name) {
+        return res.status(400).send('Playlist name is required');
+    }
 
     try {
-        const savedPlaylist = await playlist.save();
-        res.status(201).json(savedPlaylist);
+        const playlist = new Playlist({ name, userId });
+        await playlist.save();
+        res.status(201).json(playlist);
     } catch (error) {
         res.status(500).send(error.message);
     }
 });
 
-// Get playlists by userId
-router.get('/:userId', async (req, res) => {
+// Get all playlists for the authenticated user
+router.get('/', jwtAuth, async (req, res) => {
+    const userId = req.user.id;
+
     try {
-        const playlists = await Playlist.find({ userId: req.params.userId });
+        const playlists = await Playlist.find({ userId });
         res.json(playlists);
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-// Add songs to a playlist
-router.put('/:id', async (req, res) => {
-    try {
-        const updatedPlaylist = await Playlist.findByIdAndUpdate(req.params.id, {
-            $addToSet: { songs: req.body.songId },
-        }, { new: true });
-        res.json(updatedPlaylist);
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-// Delete a playlist
-router.delete('/:id', async (req, res) => {
-    try {
-        await Playlist.findByIdAndDelete(req.params.id);
-        res.status(204).send();
     } catch (error) {
         res.status(500).send(error.message);
     }
