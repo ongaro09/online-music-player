@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 
 const playlistSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true },
-    songs: [{ type: String }], // Store SoundCloud song IDs or URLs
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    desc: { type: String },
+    songs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Track' }],
+    img: { type: String }, // Optional: URL to the playlist image
 }, {
     timestamps: true,
 });
 
-module.exports = mongoose.model('Playlist', playlistSchema);
+const Playlist = mongoose.model('Playlist', playlistSchema);
+
+module.exports = Playlist;
